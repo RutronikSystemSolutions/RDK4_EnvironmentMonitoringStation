@@ -7,7 +7,7 @@
 * Related Document: See README.md
 *
 *
-*  Created on: 2023-03-09
+*  Created on: 2024-03-01
 *  Company: Rutronik Elektronische Bauelemente GmbH
 *  Address: Jonavos g. 30, Kaunas 44262, Lithuania
 *  Author: GDR
@@ -514,14 +514,25 @@ void hardware_init(void)
     	CY_ASSERT(0);
     }
 
-    /*Turn ON the 5V Power Supply VCC2 for the Display */
-    vcc2_supp = VCC2_ON_ALWAYS;
-    sbc_err = sbc_switch_vcc2(vcc2_supp);
-    if(sbc_err.flippedBitsMask)
-    {
-    	printf("Could not enable the VCC2.\r\n");
-    	CY_ASSERT(0);
-    }
+    /*Initialize Display RESET pin*/
+    result = cyhal_gpio_init(ARD_IO8, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, true);
+    if (result != CY_RSLT_SUCCESS)
+    {CY_ASSERT(0);}
+
+    /*Initialize The Arduino UART*/
+    result = ardu_uart_init();
+    if (result != CY_RSLT_SUCCESS)
+    {CY_ASSERT(0);}
+
+    /*Initialize ViSi-Genie*/
+    genieInitWithConfig(&userConfig);
+    genieAttachEventHandler(myGenieEventHandler);
+    resetDisplay();
+    delay_with_watchdog(1000);
+    genieWriteContrast(13);
+    delay_with_watchdog(1000);
+    genieWriteStr(0, GENIE_VERSION);
+    delay_with_watchdog(2000);
 
     /*Turn ON the 3.3V Power Supply VCC3 for the Arduino Shield(s) */
     vcc3_supp = VCC3_ENABLED;
@@ -535,7 +546,6 @@ void hardware_init(void)
     /*SBC Watchdog Configuration*/
     sbc_configure_watchdog(TIME_OUT_WD, NO_WD_AFTER_CAN_LIN_WAKE, WD_1000MS);
     Cy_SysLib_Delay(100);
-
 
     /*Initialize Buttons*/
     result = cyhal_gpio_init(USER_BUTTON, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, false);
@@ -639,26 +649,6 @@ void hardware_init(void)
         	CY_ASSERT(0);
         }
     }
-
-    /*Initialize Display RESET pin*/
-    result = cyhal_gpio_init(ARD_IO8, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, true);
-    if (result != CY_RSLT_SUCCESS)
-    {CY_ASSERT(0);}
-
-    /*Initialize The Arduino UART*/
-    result = ardu_uart_init();
-    if (result != CY_RSLT_SUCCESS)
-    {CY_ASSERT(0);}
-
-    /*Initialize ViSi-Genie*/
-    genieInitWithConfig(&userConfig);
-    genieAttachEventHandler(myGenieEventHandler);
-    resetDisplay();
-    delay_with_watchdog(1000);
-    genieWriteContrast(14);
-    delay_with_watchdog(1000);
-    genieWriteStr(0, GENIE_VERSION);
-    delay_with_watchdog(2000);
 }
 
 static cy_rslt_t ardu_uart_init(void)
