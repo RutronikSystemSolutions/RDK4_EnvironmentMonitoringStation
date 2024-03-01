@@ -201,6 +201,7 @@ int main(void)
     uint8_t n_fields;
     static _Bool sensors_read = false;
     uint8_t second_cnt = 0;
+    uint8_t co2_read_time = 0;
     _Bool pready, tready = false;
     uint32_t waitPeriodDisplay = 0;
     uint16_t gaugeVal = 0;
@@ -275,7 +276,7 @@ int main(void)
             else
             {
             	sht4x_read(&sensor_data_storage.sht_temperature, &sensor_data_storage.sht_humidity);
-            	scd4x_read_measurement(&sensor_data_storage.scd_co2, &sensor_data_storage.scd_temperature, &sensor_data_storage.scd_humidity);
+            	//scd4x_read_measurement(&sensor_data_storage.scd_co2, &sensor_data_storage.scd_temperature, &sensor_data_storage.scd_humidity);
             	/*Read the raw data and process the VOC Index*/
             	sgp40_read_raw(&sensor_data_storage.sgp_sraw_voc);
             	VocAlgorithm_process(&voc_algorithm_params, sensor_data_storage.sgp_sraw_voc, &sensor_data_storage.sgp_voc_index);
@@ -286,6 +287,15 @@ int main(void)
         	sensor_int_flag = false;
 
         	second_cnt++;
+        	co2_read_time++;
+        }
+
+        if(co2_read_time >= 60)
+        {
+        	scd4x_set_ambient_pressure((uint16_t)(sensor_data_storage.bmp_pressure/100));
+        	scd4x_read_measurement(&sensor_data_storage.scd_co2, &sensor_data_storage.scd_temperature, &sensor_data_storage.scd_humidity);
+        	scd4x_start_periodic_measurement();
+        	co2_read_time = 0;
         }
 
         /*Store IMU data*/
@@ -528,11 +538,11 @@ void hardware_init(void)
     genieInitWithConfig(&userConfig);
     genieAttachEventHandler(myGenieEventHandler);
     resetDisplay();
-    delay_with_watchdog(1000);
+    Cy_SysLib_Delay(1000);
     genieWriteContrast(13);
-    delay_with_watchdog(1000);
+    Cy_SysLib_Delay(1000);
     genieWriteStr(0, GENIE_VERSION);
-    delay_with_watchdog(2000);
+    Cy_SysLib_Delay(2000);
 
     /*Turn ON the 3.3V Power Supply VCC3 for the Arduino Shield(s) */
     vcc3_supp = VCC3_ENABLED;
